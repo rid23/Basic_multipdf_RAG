@@ -12,7 +12,7 @@ from chromadb.config import Settings
 import uuid
 from typing import List, Dict, Any , Tuple
 from langchain_chroma import Chroma
-
+import hashlib
 
 def load_pdf(file_path):
     if not os.path.exists(file_path):
@@ -70,6 +70,8 @@ class EmbeddingManager:
         embeddings = self.embeddings.encode(texts , show_progress_bar=True)
         print(f'Generated embeddings with shape : {embeddings.shape}')
         return embeddings
+    
+
 
 
 class VectorStore:
@@ -97,7 +99,26 @@ class VectorStore:
         except Exception as e:
             print(f'There was an error initializing the vector store {e}')
             raise
-    
+    def show_collections(self):
+        '''Show all collections in the vector store'''
+        try:
+            collections = self.Client.list_collections()
+            print(f'Collections in the vector store: {[collection.name for collection in collections]}')
+        except Exception as e:
+            print(f'There was an error fetching collections from the vector store {e}')
+            raise
+    def delete_collection(self):
+        '''Delete the collection from the vector store'''
+        try:
+            confirmation = input(f"Are you sure you want to delete the collection {self.collections_name}? This action cannot be undone. (yes/no): ")
+            if confirmation.lower() == "yes":
+                self.Client.delete_collection(name=self.collections_name)
+                print(f'Collection {self.collections_name} deleted successfully.')
+            else:
+                print(f'Collection {self.collections_name} was not deleted.')
+        except Exception as e:
+            print(f'There was an error deleting the collection {self.collections_name} from the vector store {e}')
+            raise
     def add_documents(self , documents: List[any] , embeddings: np.ndarray):
         """
         Add Documents and embeddings to the vector store . 
@@ -130,17 +151,17 @@ class VectorStore:
             #adding the embeddings
             embeddings_list.append(embedding)
 
-            #adding the ids , documents , embeddings to the collection
-            try:
-                self.collection.add(
-                    ids = ids,
-                    embeddings = embeddings_list,
-                    metadatas = metadatas,
-                    documents = documents_text
-                )
-            except Exception as e:
-                print(f'ERROR adding documents to the vector store {e}')
-                raise
+        #adding the ids , documents , embeddings to the collection
+        try:
+            self.collection.add(
+                ids = ids,
+                embeddings = embeddings_list,
+                metadatas = metadatas,
+                documents = documents_text
+            )
+        except Exception as e:
+            print(f'ERROR adding documents to the vector store {e}')
+            raise
         print(f'Vector Store Populataion complete.')
 if __name__ == "__main__": 
     '''Main function to load PDFs, split text, create embeddings, and manage vector stores.'''
@@ -152,17 +173,17 @@ if __name__ == "__main__":
     #extracting chunks [Document] page_content text into a list
     all_documents_chunks_page_content = [chunk.page_content for chunk in all_documents_chunks]
    
-    
+    '''
     # initializing the embedding manager .
     embedding_manager = EmbeddingManager() 
     #turning the chunks page_content into embeddings
     all_documents_chunks_embeddings = embedding_manager.generate_embeddings(texts=all_documents_chunks_page_content)
     print(all_documents_chunks_embeddings[2])
-
+    '''
     #initializing the vector store and adding the documents and their corresponding embeddings to the vector store.
     vector_store = VectorStore()
-    vector_store.add_documents(documents=all_documents_chunks , embeddings=all_documents_chunks_embeddings)
-
+    #vector_store.add_documents(documents=all_documents_chunks , embeddings=all_documents_chunks_embeddings)
+    vector_store.delete_collection() #uncomment this line to delete the collection before adding new documents and embeddings to avoid duplicates.
     
     
     '''
