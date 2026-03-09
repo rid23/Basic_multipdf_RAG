@@ -303,9 +303,7 @@ Source: hacking_guide.pdf
 
 ---
 
-## License
 
-MIT License
 
 ---
 
