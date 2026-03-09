@@ -5,6 +5,8 @@ Notes -
 2.The core metadata lives in SQLIte , the vectors live in Parquet Segment . 
 """
 
+#the purpose of this script is to inspect the contents of the chromadb vector store and understand how the data is stored and organized. It will help us to debug and troubleshoot any issues related to the vector store and also to understand the structure of the data for better querying and retrieval.
+
 import chromadb
 from chromadb.config import Settings
 from rich import print
@@ -23,38 +25,13 @@ def show_collections_data():
     print(f"id : {data['ids'][:2]}")
 
 
-def query_collection(n_results: int = 5):
-    query = input("Enter your query: ")
-    result_docs = collection.query(
-        query_texts=[query],
-        n_results=n_results,
-        include=["documents" , "metadatas" , "embeddings"]
-    )
-    documents = result_docs['documents'][0]
-    metadatas = result_docs['metadatas'][0]
-    print(f"Query : {query}")
-    print(f"Number of results: {len(result_docs['documents'][0])}")
-
-    #deduplicate while preserving order 
-    seen = set()
-    unique_documents = []
-    for doc , meta in zip(documents , metadatas):
-        if doc not in seen:
-            seen.add(doc)
-            unique_documents.append((doc , meta))
-    print(f"Number of unique results: {len(unique_documents)}")
-    for i in range(len(unique_documents)):
-        print(f"Result {i+1}:")
-        print(f"Document: {unique_documents[i][0]}")
-        print(f"Source: {unique_documents[i][1]['title']}")
-        print("-" * 20)
    
    
 
         
 if __name__ == "__main__":
-    #show_collections_data()
-    query_collection()
+    show_collections_data()
+    
 '''
 collections = client.list_collections()
 for collection in collections:

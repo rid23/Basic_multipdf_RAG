@@ -14,6 +14,9 @@ from typing import List, Dict, Any , Tuple
 from langchain_chroma import Chroma
 import hashlib
 
+#importing the query client to query the vector store and retrieve relevant documents based on user queries.
+from rag_query import query_client
+
 def load_pdf(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"The file {file_path} does not exist.")
@@ -163,32 +166,33 @@ class VectorStore:
             print(f'ERROR adding documents to the vector store {e}')
             raise
         print(f'Vector Store Populataion complete.')
-if __name__ == "__main__": 
-    '''Main function to load PDFs, split text, create embeddings, and manage vector stores.'''
-
+def intialize_vector_store_add_documents():
+    '''Function to initialize the vector store and add documents and their corresponding embeddings to the vector store.'''
     pdf_directory = "pdfs"  # Change this to your PDF directory
     all_documents = load_pdf(os.path.join(os.getcwd(), pdf_directory))
     all_documents_chunks = text_splitter(all_documents)
 
     #extracting chunks [Document] page_content text into a list
     all_documents_chunks_page_content = [chunk.page_content for chunk in all_documents_chunks]
-   
-    '''
+
     # initializing the embedding manager .
     embedding_manager = EmbeddingManager() 
     #turning the chunks page_content into embeddings
     all_documents_chunks_embeddings = embedding_manager.generate_embeddings(texts=all_documents_chunks_page_content)
-    print(all_documents_chunks_embeddings[2])
-    '''
+    
     #initializing the vector store and adding the documents and their corresponding embeddings to the vector store.
     vector_store = VectorStore()
-    #vector_store.add_documents(documents=all_documents_chunks , embeddings=all_documents_chunks_embeddings)
-    vector_store.delete_collection() #uncomment this line to delete the collection before adding new documents and embeddings to avoid duplicates.
-    
-    
-    '''
-    for doc_chunk in all_documents_chunks[:10]:
-        #doc_chunk_embeddings = embedding_manager.generate_embeddings()
-        print(f'{type(doc_chunk.page_content)}') 
-    '''
+    vector_store.add_documents(documents=all_documents_chunks , embeddings=all_documents_chunks_embeddings)
+if __name__ == "__main__": 
+    """initialize the vector store and add documents and their corresponding embeddings to the vector store. or query the vector store and retrieve relevant documents based on user input instructions."""
+    action = input("Enter 'add' to add documents to the vector store or 'query' to query the vector store: ")
+    if action.lower() == "add":
+        intialize_vector_store_add_documents()
+    elif action.lower() == "query":
+        query_client_instance = query_client()
+        user_query = input("Enter your query: ")
+        query_client_instance.query_collection(query=user_query , n_results=5)
+    else:        
+        print("Invalid action. Please enter 'add' or 'query'.")
+
     
