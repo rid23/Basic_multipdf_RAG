@@ -52,11 +52,14 @@ class query_client:
                     seen.add(doc)
                     unique_documents.append((doc , meta))
             print(f"Number of unique results: {len(unique_documents)}")
+            '''
             for i in range(len(unique_documents)):
                 print(f"Result {i+1}:")
                 print(f"Document: {unique_documents[i][0]}")
                 print(f"Source: {unique_documents[i][1]['title']}")
                 print("-" * 20)
+                '''
+            return unique_documents
         except Exception as e:
             print(f'There was an error querying the collection {e}')
             raise

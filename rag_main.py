@@ -17,6 +17,13 @@ import hashlib
 #importing the query client to query the vector store and retrieve relevant documents based on user queries.
 from rag_query import query_client
 
+#importing the llm cient 
+from llm_brain import the_brain
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAI
+
+from dotenv import load_dotenv
+load_dotenv()
+
 def load_pdf(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"The file {file_path} does not exist.")
@@ -166,6 +173,8 @@ class VectorStore:
             print(f'ERROR adding documents to the vector store {e}')
             raise
         print(f'Vector Store Populataion complete.')
+
+
 def intialize_vector_store_add_documents():
     '''Function to initialize the vector store and add documents and their corresponding embeddings to the vector store.'''
     pdf_directory = "pdfs"  # Change this to your PDF directory
@@ -183,15 +192,37 @@ def intialize_vector_store_add_documents():
     #initializing the vector store and adding the documents and their corresponding embeddings to the vector store.
     vector_store = VectorStore()
     vector_store.add_documents(documents=all_documents_chunks , embeddings=all_documents_chunks_embeddings)
+
+
+def retrieve_context(query:str) -> str:
+    """this function will take in a user query and retrieve relevant documents from the vector store based on the user query and return the merged context text to be used by the LLM brain to generate a response."""
+    query_client_instance = query_client()
+    docs_from_query = query_client_instance.query_collection(query=query , n_results=5)
+    context_text_merged = " ".join([doc[0] for doc in docs_from_query])
+    return context_text_merged
+
+
 if __name__ == "__main__": 
     """initialize the vector store and add documents and their corresponding embeddings to the vector store. or query the vector store and retrieve relevant documents based on user input instructions."""
     action = input("Enter 'add' to add documents to the vector store or 'query' to query the vector store: ")
     if action.lower() == "add":
         intialize_vector_store_add_documents()
     elif action.lower() == "query":
-        query_client_instance = query_client()
-        user_query = input("Enter your query: ")
-        query_client_instance.query_collection(query=user_query , n_results=5)
+        google_gemini_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
+        
+        
+        while True:
+            
+            user_query = input("Enter your Query: ")
+            if user_query == "quit":
+                print("Exiting ................ ")
+                break
+
+            context_text_merged = retrieve_context(query=user_query)
+            #print(f"Context - : {context_text_merged}") #printing the
+
+            llm_result = the_brain(llm=google_gemini_llm , context=context_text_merged , query=user_query)
+            print(llm_result)
     else:        
         print("Invalid action. Please enter 'add' or 'query'.")
 
