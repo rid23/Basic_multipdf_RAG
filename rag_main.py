@@ -40,6 +40,32 @@ def load_pdf(file_path):
     print(f"Total documents loaded: {len(all_documents)}")
     return all_documents
 
+def compute_flie_hash(file_path):
+    """compute the md5 hash of a file"""
+    hash_md5 = hashlib.md5()
+    with open(file_path , 'rb') as f:
+        for chunk in iter(lambda: f.read(4096) , b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
+def load_single_pdf(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"The file {file_path} does not exist.")
+    
+    #compute the file hash
+    file_hash = compute_flie_hash(file_path)
+
+    print(f"loading single pdf from {file_path}")
+    loader = PyMuPDFLoader(file_path)
+    documents = loader.load()
+
+    #adding the file hash into each document's metadata 
+    for doc in documents:
+        doc.metadata['file_hash'] = file_hash
+        doc.metadata['file_path'] = file_path
+    print(f"Loaded {len(documents)} documents from {file_path}")
+    return documents
 
 def text_splitter(documents , chunk_size=1000, chunk_overlap=200):
     """Splitting documents into chunks of text."""
@@ -109,6 +135,19 @@ class VectorStore:
         except Exception as e:
             print(f'There was an error initializing the vector store {e}')
             raise
+
+    def pdf_exists(self , file_hash):
+        """this function checks if a pdf with this hash already exists in the vector store"""
+        try:
+            results = self.collection.get(
+                where={"file_hash": file_hash},
+                limit=1
+            )
+            return len(results['ids']) > 0
+        except Exception as e:
+            print(f'Error checking for existing PDF : {e}')
+            return False
+        
     def show_collections(self):
         '''Show all collections in the vector store'''
         try:
@@ -177,22 +216,50 @@ class VectorStore:
 
 def intialize_vector_store_add_documents():
     '''Function to initialize the vector store and add documents and their corresponding embeddings to the vector store.'''
-    pdf_directory = "pdfs"  # Change this to your PDF directory
-    all_documents = load_pdf(os.path.join(os.getcwd(), pdf_directory))
-    all_documents_chunks = text_splitter(all_documents)
-
-    #extracting chunks [Document] page_content text into a list
-    all_documents_chunks_page_content = [chunk.page_content for chunk in all_documents_chunks]
-
-    # initializing the embedding manager .
-    embedding_manager = EmbeddingManager() 
-    #turning the chunks page_content into embeddings
-    all_documents_chunks_embeddings = embedding_manager.generate_embeddings(texts=all_documents_chunks_page_content)
-    
-    #initializing the vector store and adding the documents and their corresponding embeddings to the vector store.
+    pdf_directory = "pdfs"
     vector_store = VectorStore()
-    vector_store.add_documents(documents=all_documents_chunks , embeddings=all_documents_chunks_embeddings)
 
+    processed_hashes = set()
+    all_new_chunks = []
+    all_new_embeddings = []
+
+    pdf_files = [f for f in os.listdir(pdf_directory) if f.endswith('.pdf')]
+    print(f'Found {len(pdf_files)} PDF files to process')
+
+    for pdf_file in pdf_files:
+        file_path = os.path.join(pdf_directory , pdf_file)
+        file_hash = compute_flie_hash(file_path)
+
+        #skip if already processed in this run
+        if file_hash in processed_hashes:
+            print(f"Skipping apready processed file: {pdf_file}") 
+            continue
+        #skip if already in vector store
+
+        if vector_store.pdf_exists(file_hash):
+            print(f"Skipping already existing file in vector store: {pdf_file}")
+            processed_hashes.add(file_hash)
+            continue
+        
+        #processing new pdf files
+        print(f'Processing new files : {pdf_file}')
+        documents = load_single_pdf(file_path)
+        chunks = text_splitter(documents)
+
+        #extract text for embeddings
+        chunk_texts = [chunk.page_content for chunk in chunks]
+        embedding_manager = EmbeddingManager()
+        embeddings = embedding_manager.generate_embeddings(chunk_texts)
+        all_new_chunks.extend(chunks)
+        all_new_embeddings.extend(embeddings)
+        processed_hashes.add(file_hash)
+
+    #add all new chunks to vector store in one batch
+    if all_new_chunks:
+        vector_store.add_documents(all_new_chunks , all_new_embeddings)
+        print(f'Added {len(all_new_chunks)} new chunks from {len(processed_hashes)} new PDFs')
+    else:
+        print("No new PDFs to process.")
 
 def retrieve_context(query:str) -> str:
     """this function will take in a user query and retrieve relevant documents from the vector store based on the user query and return the merged context text to be used by the LLM brain to generate a response."""

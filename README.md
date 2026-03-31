@@ -47,6 +47,7 @@ This RAG system performs the following operations:
 | **scikit-learn** | Cosine Similarity | <img src="https://scikit-learn.org/stable/_static/scikit-learn-logo-small.png" width="60"/> |
 | **Rich** | Terminal Formatting | <img src="https://github.com/Textualize/rich/raw/master/imgs/logo.svg" width="40"/> |
 | **NumPy** | Numerical Computing | <img src="https://upload.wikimedia.org/wikipedia/commons/3/31/NumPy_logo_2020.svg" width="60"/> |
+| **Google Gemini 2.5 Flash** | LLM for Answer Generation | <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="40"/> |
 
 ---
 
@@ -56,6 +57,7 @@ This RAG system performs the following operations:
 langchain_rag/
 ├── rag_main.py              # Main script - PDF loading, embedding, vector storage
 ├── rag_query.py             # Query client for semantic search
+├── llm_brain.py             # LLM brain using Google Gemini 2.5 Flash for answer generation
 ├── chroma_db_inspector.py   # Utility to inspect vector store contents
 ├── pdfs/                    # Directory containing PDF files
 ├── vector_store/            # Persistent ChromaDB storage
@@ -122,6 +124,55 @@ client.query_collection("your question", n_results=5)
 **Usage:**
 ```bash
 python chroma_db_inspector.py
+```
+
+---
+
+### 4. `llm_brain.py` - LLM Brain (Google Gemini 2.5 Flash)
+
+**Purpose:** Provides the AI "brain" for the RAG system. Uses Google Gemini 2.5 Flash model to generate natural language answers based on retrieved context from the vector store.
+
+**Key Function:**
+- `the_brain(llm, context, query)` - Generates answers using a RAG chain
+  - Takes an LLM instance, retrieved context, and user query
+  - Uses LangChain's PromptTemplate and StrOutputParser
+  - Returns a concise, context-aware answer
+
+**Integration with RAG Pipeline:**
+```python
+from llm_brain import the_brain
+from rag_query import query_client
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+# Initialize LLM
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+
+# Query vector store
+query_client_instance = query_client()
+context_docs = query_client_instance.query_collection("your question", n_results=5)
+
+# Format context
+context = "\n\n".join([doc[0] for doc in context_docs])
+
+# Generate answer
+answer = the_brain(llm, context, "your question")
+print(answer)
+```
+
+**Usage:**
+```bash
+# Import and use in your own scripts
+python -c "
+from llm_brain import the_brain
+from rag_query import query_client
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash')
+client = query_client()
+docs = client.query_collection('What is SQL injection?', n_results=3)
+context = '\n\n'.join([d[0] for d in docs])
+print(the_brain(llm, context, 'What is SQL injection?'))
+"
 ```
 
 ---
@@ -203,18 +254,36 @@ Default: `hacking_pdfs`
 vector_store = VectorStore(collection_name="your_collection_name")
 ```
 
+### LLM Model (llm_brain.py)
+Default: `gemini-2.0-flash` (Google Gemini 2.5 Flash)
+
+To use with the LLM brain:
+```python
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+```
+
+Set your Google API key:
+```bash
+export GOOGLE_API_KEY="your-api-key"
+# Windows
+set GOOGLE_API_KEY=your-api-key
+```
+
 ---
 
 ## To Improve
 
 ### 🔴 High Priority
 
-1. **Add LLM Integration for Answer Generation**
-   - Currently returns raw document chunks
-   - Integrate with OpenAI, Anthropic, or local LLMs (Llama3, Mistral)
-   - Use LangChain's `RetrievalQA` chain for complete RAG pipeline
+1. ~~Add LLM Integration for Answer Generation~~
+   - ~~Currently returns raw document chunks~~
+   - ~~Integrate with OpenAI, Anthropic, or local LLMs (Llama3, Mistral)~~
+   - ~~Use LangChain's `RetrievalQA` chain for complete RAG pipeline~~
+   - ✅ **COMPLETED** - Added `llm_brain.py` with Google Gemini 2.5 Flash integration
 
-2. **Implement Hybrid Search**
+2. Implement Hybrid Search
    - Combine dense (semantic) embeddings with sparse (BM25) search
    - Use `langchain-community`'s `EnsembleRetriever`
 
@@ -275,6 +344,28 @@ vector_store = VectorStore(collection_name="your_collection_name")
 15. **Test Coverage**
     - Unit tests for each component
     - Integration tests for pipeline
+
+---
+
+## Pending Updates (llm_brain.py)
+
+The following items need to be completed for full LLM integration:
+
+1. **Add Google Gemini to requirements.txt**
+   - Missing: `langchain-google-genai` package
+   - Add: `google-generativeai` package
+
+2. **Create unified main script**
+   - Integrate `llm_brain.py` with `rag_main.py` and `rag_query.py`
+   - Provide end-to-end RAG pipeline with answer generation
+
+3. **Environment Variables**
+   - Add `GOOGLE_API_KEY` configuration for Gemini authentication
+
+4. **Extend llm_brain.py**
+   - Add error handling for API failures
+   - Add support for streaming responses
+   - Add configurable prompt templates
 
 ---
 

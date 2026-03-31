@@ -17,20 +17,29 @@ print(f"Collection Name: {collection.name}")
 #print(f"Collection Peek : {collection.peek()}")
 
 def show_collections_data():
-    data = collection.get(include=["documents" , "metadatas" , "embeddings"])
-    print(f"Number of documents in collection: {len(data['documents'])}")
-    print(f"Documents : {data['documents'][:2]}")   
-    print(f"Metadatas : {data['metadatas'][:2]}")
-    print(f"Embeddings : {data['embeddings'][:2]}")
-    print(f"id : {data['ids'][:2]}")
-
+    try:
+        data = collection.get(include=["documents" , "metadatas" , "embeddings"])
+        print(f"Number of documents in collection: {len(data['documents'])}")
+        print(f"Documents : {data['documents'][:2]}")   
+        print(f"Metadatas : {data['metadatas'][:2]}")
+        print(f"Embeddings : {data['embeddings'][:2]}")
+        print(f"id : {data['ids'][:2]}")
+    except Exception as e:
+        print(f"There was an error retrieving the collection data {e}")
+        raise
 
    
-   
+def delete_collection():
+    client.delete_collection(name="hacking_pdfs")
+    print("Collection deleted successfully")
 
         
 if __name__ == "__main__":
-    show_collections_data()
+    choice = input("Enter 'show' to display collection data or 'delete' to delete the collection: ")
+    if choice.lower() == 'show':
+        show_collections_data()
+    elif choice.lower() == 'delete':
+        delete_collection()
     
 '''
 collections = client.list_collections()
